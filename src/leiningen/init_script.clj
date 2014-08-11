@@ -84,15 +84,28 @@
      :redirect-output-to "/dev/null"
      :version version}))
 
+(defn- get-source-uberjar-path
+  "The path of the uberjar that is written under the 'target' dir is subject
+  to change depending on the version of of leiningen in use. The three paths below
+  are what I've seen thus far -- look in each location for the uberjar until found."
+  [{:keys [target-path root] :as project} {:keys [name version] :as opts}]
+  (let [paths [(str target-path "/" (:name opts) "-" version "-standalone.jar")
+               (str target-path "+uberjar/" (:name opts) "-" version "-standalone.jar")
+               (str root "/target/" (:name opts) "-" version "-standalone.jar")]]
+    (loop [p (first paths)
+           paths (rest paths)]
+      (if (or (.exists (io/as-file p)) (empty? paths))
+        p
+        (recur (first paths) (rest paths))))))
+
 (defn init-script
   "A leiningen plugin that allows you to generate *NIX init scripts."
   [project]
   (let [opts (merge (defaults project) (:lis-opts project))
-        target-path (:target-path project)
         name (or (:artifact-name opts) (:name opts))
         version (:version opts)
         artifact-dir (:artifact-dir opts) ;; the init-script dir
-        source-uberjar-path (str target-path "/" (:name opts) "-" version "-standalone.jar")
+        source-uberjar-path (get-source-uberjar-path project opts)
         artifact-uberjar-path (format "%s/%s-%s-standalone.jar" artifact-dir name version)
         artifact-init-script-path (str artifact-dir "/" name "d")
         install-script-path (str artifact-dir "/" "install-" name)
