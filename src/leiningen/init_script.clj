@@ -25,7 +25,7 @@
 (def clean-template (slurp (resource-input-stream "clean-template")))
 
 (defn gen-init-script [project opts]
-  (let [name (:name project)
+  (let [name (or (:artifact-name opts) (:name project))
         version (:version project)
         description (:description project)
         pid-dir (:pid-dir opts)
@@ -45,7 +45,7 @@
 (defn gen-install-script [uberjar-path init-script-path opts]
   (let [jar-install-dir (:jar-install-dir opts)
         init-script-install-dir (:init-script-install-dir opts)
-        name (:name opts)
+        name (or (:artifact-name opts) (:name opts))
         version (:version opts)
         installed-init-script-path (str init-script-install-dir "/" name "d")]
     (format install-template
@@ -60,7 +60,7 @@
 (defn gen-clean-script [project opts]
   (let [jar-install-dir (:jar-install-dir opts)
         init-script-install-dir (:init-script-install-dir opts)
-        name (:name project)]
+        name (or (:artifact-name opts) (:name project))]
     (format clean-template name jar-install-dir init-script-install-dir)))
 
 (defn create-output-dir [path]
