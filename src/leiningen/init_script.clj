@@ -88,17 +88,18 @@
   "A leiningen plugin that allows you to generate *NIX init scripts."
   [project]
   (let [opts (merge (defaults project) (:lis-opts project))
-        root (:root project)
-        name (:name opts)
+        target-path (:target-path project)
+        name (or (:artifact-name opts) (:name opts))
         version (:version opts)
-        artifact-dir (:artifact-dir opts)
-        source-uberjar-path (str root "/target/" name "-" version "-standalone.jar")
-        artifact-uberjar-path (str artifact-dir "/" name "-" version "-standalone.jar")
+        artifact-dir (:artifact-dir opts) ;; the init-script dir
+        source-uberjar-path (str target-path "/" (:name opts) "-" version "-standalone.jar")
+        artifact-uberjar-path (format "%s/%s-%s-standalone.jar" artifact-dir name version)
         artifact-init-script-path (str artifact-dir "/" name "d")
         install-script-path (str artifact-dir "/" "install-" name)
         clean-script-path (str artifact-dir "/" "clean-" name)]
-    (create-output-dir artifact-dir)
-    (uberjar project)
+    (create-output-dir artifact-dir) ;; Creates directory for init-scripts
+    (uberjar project) ;; Leiningen task that creates uberjars
+    ;; Copy from source dir (where uberjars have been created by leiningen) to artifact-path
     (io/copy (java.io.File. source-uberjar-path) (java.io.File. artifact-uberjar-path))
     (create-script
      artifact-init-script-path (gen-init-script project opts))
