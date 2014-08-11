@@ -25,7 +25,7 @@
 (def clean-template (slurp (resource-input-stream "clean-template")))
 
 (defn gen-init-script [project opts]
-  (let [name (:name project)
+  (let [name (or (:artifact-name opts) (:name project))
         version (:version project)
         description (:description project)
         pid-dir (:pid-dir opts)
@@ -45,7 +45,7 @@
 (defn gen-install-script [uberjar-path init-script-path opts]
   (let [jar-install-dir (:jar-install-dir opts)
         init-script-install-dir (:init-script-install-dir opts)
-        name (:name opts)
+        name (or (:artifact-name opts) (:name opts))
         version (:version opts)
         installed-init-script-path (str init-script-install-dir "/" name "d")]
     (format install-template
@@ -60,7 +60,7 @@
 (defn gen-clean-script [project opts]
   (let [jar-install-dir (:jar-install-dir opts)
         init-script-install-dir (:init-script-install-dir opts)
-        name (:name project)]
+        name (or (:artifact-name opts) (:name project))]
     (format clean-template name jar-install-dir init-script-install-dir)))
 
 (defn create-output-dir [path]
@@ -84,21 +84,35 @@
      :redirect-output-to "/dev/null"
      :version version}))
 
+(defn- get-source-uberjar-path
+  "The path of the uberjar that is written under the 'target' dir is subject
+  to change depending on the version of of leiningen in use. The three paths below
+  are what I've seen thus far -- look in each location for the uberjar until found."
+  [{:keys [target-path root] :as project} {:keys [name version] :as opts}]
+  (let [paths [(str target-path "/" (:name opts) "-" version "-standalone.jar")
+               (str target-path "+uberjar/" (:name opts) "-" version "-standalone.jar")
+               (str root "/target/" (:name opts) "-" version "-standalone.jar")]]
+    (loop [p (first paths)
+           paths (rest paths)]
+      (if (or (.exists (io/as-file p)) (empty? paths))
+        p
+        (recur (first paths) (rest paths))))))
+
 (defn init-script
   "A leiningen plugin that allows you to generate *NIX init scripts."
   [project]
   (let [opts (merge (defaults project) (:lis-opts project))
-        root (:root project)
-        name (:name opts)
+        name (or (:artifact-name opts) (:name opts))
         version (:version opts)
-        artifact-dir (:artifact-dir opts)
-        source-uberjar-path (str root "/target/" name "-" version "-standalone.jar")
-        artifact-uberjar-path (str artifact-dir "/" name "-" version "-standalone.jar")
+        artifact-dir (:artifact-dir opts) ;; the init-script dir
+        source-uberjar-path (get-source-uberjar-path project opts)
+        artifact-uberjar-path (format "%s/%s-%s-standalone.jar" artifact-dir name version)
         artifact-init-script-path (str artifact-dir "/" name "d")
         install-script-path (str artifact-dir "/" "install-" name)
         clean-script-path (str artifact-dir "/" "clean-" name)]
-    (create-output-dir artifact-dir)
-    (uberjar project)
+    (create-output-dir artifact-dir) ;; Creates directory for init-scripts
+    (uberjar project) ;; Leiningen task that creates uberjars
+    ;; Copy from source dir (where uberjars have been created by leiningen) to artifact-path
     (io/copy (java.io.File. source-uberjar-path) (java.io.File. artifact-uberjar-path))
     (create-script
      artifact-init-script-path (gen-init-script project opts))
