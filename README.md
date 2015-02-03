@@ -75,6 +75,14 @@ which are passed to the the init-script task by adding a :lis-opts entry to the 
 
 Create a main class for your project, run <code>lein init-script</code>, and check the ./init-script directory. Typically you'll want to run <code>./init-script/install-project</code> and then restart with e.g. <code>/etc/init.d/projectd restart</code>.
 
+### ring uberjar and others
+
+If you're using `ring uberjar` you can disable running vanilla `uberjar` by `init-script`. To do this set `:run-uberjar?` to false and run arbitrary `xxx uberjar` before calling init-script. To do it in one like use `do` task:
+
+```bash
+lein do ring uberjar, init-script
+```
+
 ## Limitations
 
 No Windows support at this time, if you'd like to see support for windows services, please open up an issue.
