@@ -82,6 +82,7 @@
      :init-script-install-dir "/etc/init.d"
      :artifact-dir (str root "/init-script")
      :redirect-output-to "/dev/null"
+     :run-uberjar? true
      :version version}))
 
 (defn- get-source-uberjar-path
@@ -105,13 +106,16 @@
         name (or (:artifact-name opts) (:name opts))
         version (:version opts)
         artifact-dir (:artifact-dir opts) ;; the init-script dir
+        run-uberjar? (:run-uberjar? opts)
         source-uberjar-path (get-source-uberjar-path project opts)
         artifact-uberjar-path (format "%s/%s-%s-standalone.jar" artifact-dir name version)
         artifact-init-script-path (str artifact-dir "/" name "d")
         install-script-path (str artifact-dir "/" "install-" name)
         clean-script-path (str artifact-dir "/" "clean-" name)]
     (create-output-dir artifact-dir) ;; Creates directory for init-scripts
-    (uberjar project) ;; Leiningen task that creates uberjars
+    (when run-uberjar?
+      (uberjar project)) ;; Leiningen task that creates uberjars
+
     ;; Copy from source dir (where uberjars have been created by leiningen) to artifact-path
     (io/copy (java.io.File. source-uberjar-path) (java.io.File. artifact-uberjar-path))
     (create-script
